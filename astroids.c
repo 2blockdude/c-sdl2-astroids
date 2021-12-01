@@ -16,9 +16,13 @@
 
 #define BULLET_SIZE     3
 #define BULLET_SPEED    600
-#define BULLET_INTERVAL 750
+#define BULLET_INTERVAL 500
 
-#define PI 3.1415926535897932384626433832795
+#define ASTROIDS_SIZE   50
+#define ASTROIDS_SCALE  4
+#define ASTROIDS_SPEED  100
+
+#define PI              3.1415926535897932384626433832795
 
 struct ship
 {
@@ -51,6 +55,7 @@ void render_objects()
    if (game.keypress[SDLK_w])
       draw_polygon(game.renderer, player.thruster);
 
+   // draw bullets and astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
       draw_polygon(game.renderer, astroids[i].shape);
@@ -69,6 +74,7 @@ void update_objects()
 
    if (game.keypress[SDLK_w])
    {
+      // acceleration
       player.velocity.x += cos(player.ship->angle) * (float)SHIP_SPEED * game.delta_t;
       player.velocity.y += sin(player.ship->angle) * (float)SHIP_SPEED * game.delta_t;
 
@@ -97,7 +103,7 @@ void update_objects()
       player.ship->angle += (float)SHIP_TURN_SPEED * game.delta_t;
    }
 
-   // reduce velocity proportional to current velocity over time
+   // give player drag to simulate speed limit
    player.velocity.x -= player.velocity.x * game.delta_t;
    player.velocity.y -= player.velocity.y * game.delta_t;
 
@@ -107,8 +113,8 @@ void update_objects()
 
    // wrap ship around screen
    if (player.ship->x < 0) player.ship->x = SCREEN_WIDTH;
-   if (player.ship->x > SCREEN_WIDTH) player.ship->x = 0;
    if (player.ship->y < 0) player.ship->y = SCREEN_HEIGHT;
+   if (player.ship->x > SCREEN_WIDTH) player.ship->x = 0;
    if (player.ship->y > SCREEN_HEIGHT) player.ship->y = 0;
 
    polygon_rebuild(player.ship);
@@ -117,9 +123,10 @@ void update_objects()
     * bullet stuff
     */
 
+   // shoot bullet
    if (game.keypress[SDLK_SPACE])
    {
-      // set first avalible space for bullet
+      // set first avalible space in array for bullet
       if (bullet_timer <= 0)
       {
          for (int i = 0; i < MAX_OBJECTS; i++)
@@ -157,6 +164,28 @@ void update_objects()
 
    // reduce timer by milliseconds per frame
    if (bullet_timer > 0) bullet_timer -= game.delta_t * 1000.0f;
+
+   /*
+    * astroids stuff
+    */
+
+   // move all bullets
+   for (int i = 0; i < MAX_OBJECTS; i++)
+   {
+      if (astroids[i].shape != NULL)
+      {
+         astroids[i].shape->x += astroids[i].velocity.x * game.delta_t;
+         astroids[i].shape->y += astroids[i].velocity.y * game.delta_t;
+
+         // wrap ship around screen
+         if (astroids[i].shape->x < 0) astroids[i].shape->x = SCREEN_WIDTH;
+         if (astroids[i].shape->y < 0) astroids[i].shape->y = SCREEN_HEIGHT;
+         if (astroids[i].shape->x > SCREEN_WIDTH)  astroids[i].shape->x = 0;
+         if (astroids[i].shape->y > SCREEN_HEIGHT) astroids[i].shape->y = 0;
+
+         polygon_rebuild(astroids[i].shape);
+      }
+   }
 }
 
 // function needed for game window code
@@ -171,6 +200,7 @@ int on_game_update()
 int on_game_creation()
 {
    SDL_ShowCursor(SDL_DISABLE);
+   srand(SDL_GetTicks());
 
    // init player
    player.ship = create_reg_polygon(3, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 0, SHIP_SIZE);
@@ -183,6 +213,17 @@ int on_game_creation()
    {
       bullets[i].shape = NULL;
       astroids[i].shape = NULL;
+   }
+
+   // init random astroids
+   for (int i = 0; i < 2; i++)
+   {
+      astroids[i].shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+      astroids[i].shape->scale.x = ASTROIDS_SCALE;
+      astroids[i].shape->scale.y = ASTROIDS_SCALE;
+      astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
+      astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
+      polygon_rebuild(astroids[i].shape);
    }
 
    return 0;

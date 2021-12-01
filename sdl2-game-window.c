@@ -40,6 +40,7 @@ int init_game_window(int width, int height, const char *title)
    for (int i = 0; i < 128; i++)
       game.keypress[i] = 0;
 
+   SDL_RenderPresent(game.renderer);
    on_game_creation();
 
    return 0;
