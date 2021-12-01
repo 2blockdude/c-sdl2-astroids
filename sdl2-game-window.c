@@ -34,6 +34,7 @@ int init_game_window(int width, int height, const char *title)
    game.running = 1;
    game.pause = 0;
    game.delta_t = 0;
+   game.fps_max = 60;
 
    for (int i = 0; i < 128; i++)
       game.keypress[i] = 0;
@@ -41,7 +42,7 @@ int init_game_window(int width, int height, const char *title)
    return 0;
 }
 
-void destroy_game_window()
+void close_game_window()
 {
    // clean up
    SDL_DestroyWindow(game.window);
@@ -85,7 +86,8 @@ int start_game()
       handle_events();
       on_game_update();
 
-      SDL_Delay((1000.0f / 60.0f) - (SDL_GetTicks() - start));
+      if (game.fps_max < 0)
+         SDL_Delay((1000.0f / game.fps_max) - (SDL_GetTicks() - start));
 
       end = SDL_GetTicks();
 

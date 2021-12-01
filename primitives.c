@@ -192,6 +192,18 @@ struct polygon *create_rand_polygon(int nsides, float x, float y, float angle, f
    return p;
 }
 
+struct polygon *create_copy_polygon(struct polygon *p)
+{
+   if (p == NULL)
+      return NULL;
+
+   struct polygon *p_copy = create_polygon(p->vectors, p->nsides, p->x, p->y, p->angle);
+   p_copy->scale.x = p->scale.x;
+   p_copy->scale.y = p->scale.y;
+
+   return p_copy;
+}
+
 // rebuild floating point polygon
 int polygon_rebuild(struct polygon *p)
 {

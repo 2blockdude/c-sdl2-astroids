@@ -17,6 +17,7 @@ struct game_window
    // frame info
    double delta_t;
    double fps;
+   int fps_max;
 
    // bools
    char running;
@@ -29,7 +30,7 @@ struct game_window
 extern struct game_window game;
 
 int init_game_window       (int width, int height, const char *title);
-void destroy_game_window   ();
+void close_game_window     ();
 int start_game             ();
 int on_game_update         ();
 
