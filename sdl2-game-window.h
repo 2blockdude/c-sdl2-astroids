@@ -17,7 +17,7 @@ struct game_window
    // frame info
    double delta_t;
    double fps;
-   int fps_max;
+   float max_fps;
 
    // bools
    char running;
@@ -33,5 +33,6 @@ int init_game_window       (int width, int height, const char *title);
 void close_game_window     ();
 int start_game             ();
 int on_game_update         ();
+int on_game_creation       ();
 
 #endif

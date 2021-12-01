@@ -9,9 +9,14 @@
 #define SCREEN_HEIGHT	1000
 
 #define MAX_OBJECTS     20
-#define SHIP_SIZE       20
 
-#define BULLET_INTERVAL 1000
+#define SHIP_SIZE       20
+#define SHIP_SPEED      500
+#define SHIP_TURN_SPEED 8
+
+#define BULLET_SIZE     3
+#define BULLET_SPEED    600
+#define BULLET_INTERVAL 750
 
 #define PI 3.1415926535897932384626433832795
 
@@ -64,32 +69,32 @@ void update_objects()
 
    if (game.keypress[SDLK_w])
    {
-      player.velocity.x += cos(player.ship->angle) * 500.0f * game.delta_t;
-      player.velocity.y += sin(player.ship->angle) * 500.0f * game.delta_t;
+      player.velocity.x += cos(player.ship->angle) * (float)SHIP_SPEED * game.delta_t;
+      player.velocity.y += sin(player.ship->angle) * (float)SHIP_SPEED * game.delta_t;
 
       /*
        * note:
        * I found this by accident but setting the thruster
        * position before setting the player position gives a
        * cool lag effect for the polygon giving a better
-       * feel for speed.
+       * feel for speed. This only works at lower fps.
        */
 
       // set thruster polygon stuff
       player.thruster->angle = player.ship->angle + PI;
-      player.thruster->x = cos(player.thruster->angle) * 20.0f + player.ship->x;
-      player.thruster->y = sin(player.thruster->angle) * 20.0f + player.ship->y;
+      player.thruster->x = cos(player.thruster->angle) * (float)SHIP_SIZE + player.ship->x;
+      player.thruster->y = sin(player.thruster->angle) * (float)SHIP_SIZE + player.ship->y;
       polygon_rebuild(player.thruster);
    }
 
    if (game.keypress[SDLK_a])
    {
-      player.ship->angle -= 8.0f * game.delta_t;
+      player.ship->angle -= (float)SHIP_TURN_SPEED * game.delta_t;
    }
 
    if (game.keypress[SDLK_d])
    {
-      player.ship->angle += 8.0f * game.delta_t;
+      player.ship->angle += (float)SHIP_TURN_SPEED * game.delta_t;
    }
 
    // reduce velocity proportional to current velocity over time
@@ -121,9 +126,9 @@ void update_objects()
          {
             if (bullets[i].shape == NULL)
             {
-               bullets[i].shape = create_reg_polygon(6, player.ship->vertices[0], player.ship->vertices[1], player.ship->angle, 3);
-               bullets[i].velocity.x = cos(player.ship->angle) * 600.0f;
-               bullets[i].velocity.y = sin(player.ship->angle) * 600.0f;
+               bullets[i].shape = create_reg_polygon(6, player.ship->vertices[0], player.ship->vertices[1], player.ship->angle, BULLET_SIZE);
+               bullets[i].velocity.x = cos(player.ship->angle) * (float)BULLET_SPEED;
+               bullets[i].velocity.y = sin(player.ship->angle) * (float)BULLET_SPEED;
                bullet_timer = BULLET_INTERVAL;
                break;
             }
@@ -150,7 +155,7 @@ void update_objects()
       }
    }
 
-   // reduce timer by time per frame
+   // reduce timer by milliseconds per frame
    if (bullet_timer > 0) bullet_timer -= game.delta_t * 1000.0f;
 }
 
@@ -163,11 +168,13 @@ int on_game_update()
    return 0;
 }
 
-int main()
+int on_game_creation()
 {
-   // init player, astroids, and bulllets
-   player.ship = create_reg_polygon(3, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 0, 20);
-   player.thruster = create_reg_polygon(3, 0, 0, 0, 10);
+   SDL_ShowCursor(SDL_DISABLE);
+
+   // init player
+   player.ship = create_reg_polygon(3, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 0, SHIP_SIZE);
+   player.thruster = create_reg_polygon(3, 0, 0, 0, (float)SHIP_SIZE / 2.0f);
    player.velocity.x = 0;
    player.velocity.y = 0;
 
@@ -178,8 +185,12 @@ int main()
       astroids[i].shape = NULL;
    }
 
+   return 0;
+}
+
+int main()
+{
    init_game_window(SCREEN_WIDTH, SCREEN_HEIGHT, "astroids");
-   SDL_ShowCursor(SDL_DISABLE);
    start_game();
 
    // return memory stuff
