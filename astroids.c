@@ -4,6 +4,7 @@
 
 #include "sdl2-game-window.h"
 #include "primitives.h"
+#include "collision.h"
 
 #define SCREEN_WIDTH		1000
 #define SCREEN_HEIGHT	1000
@@ -14,7 +15,7 @@
 #define SHIP_SPEED      500
 #define SHIP_TURN_SPEED 8
 
-#define BULLET_SIZE     3
+#define BULLET_SIZE     2
 #define BULLET_SPEED    600
 #define BULLET_INTERVAL 500
 
@@ -38,9 +39,77 @@ struct space_object
 };
 
 int bullet_timer;
+int current_round;
 struct ship player;
 struct space_object astroids[MAX_OBJECTS];
 struct space_object bullets[MAX_OBJECTS];
+
+int wrap_position(float x, float y, float *ox, float *oy)
+{
+   if (x < 0)
+   {
+      if (ox != NULL)
+         *ox = SCREEN_WIDTH;
+      return 1;
+   }
+
+   if (y < 0)
+   {
+      if (oy != NULL)
+         *oy = SCREEN_HEIGHT;
+      return 1;
+   }
+
+   if (x > SCREEN_WIDTH)
+   {
+      if (ox != NULL)
+         *ox = 0;
+      return 1;
+   }
+
+   if (y > SCREEN_HEIGHT)
+   {
+      if (oy != NULL)
+         *oy = 0;
+      return 1;
+   }
+
+   return 0;
+}
+
+void restart_game()
+{
+   // reset player status
+   player.ship->x = SCREEN_WIDTH / 2.0f;
+   player.ship->y = SCREEN_HEIGHT / 2.0f;
+   player.velocity.x = 0;
+   player.velocity.y = 0;
+   polygon_rebuild(player.ship);
+
+   // free bullets and astroids
+   for (int i = 0; i < MAX_OBJECTS; i++)
+   {
+      if (bullets[i].shape != NULL)
+         free_polygon(bullets[i].shape);
+
+      if (astroids[i].shape != NULL)
+         free_polygon(astroids[i].shape);
+
+      bullets[i].shape = NULL;
+      astroids[i].shape = NULL;
+   }
+
+   // init random astroids
+   for (int i = 0; i < 2; i++)
+   {
+      astroids[i].shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+      astroids[i].shape->scale.x = ASTROIDS_SCALE;
+      astroids[i].shape->scale.y = ASTROIDS_SCALE;
+      astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
+      astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
+      polygon_rebuild(astroids[i].shape);
+   }
+}
 
 void render_objects()
 {
@@ -112,10 +181,7 @@ void update_objects()
    player.ship->y += player.velocity.y * game.delta_t;
 
    // wrap ship around screen
-   if (player.ship->x < 0) player.ship->x = SCREEN_WIDTH;
-   if (player.ship->y < 0) player.ship->y = SCREEN_HEIGHT;
-   if (player.ship->x > SCREEN_WIDTH) player.ship->x = 0;
-   if (player.ship->y > SCREEN_HEIGHT) player.ship->y = 0;
+   wrap_position(player.ship->x, player.ship->y, &player.ship->x, &player.ship->y);
 
    polygon_rebuild(player.ship);
 
@@ -154,7 +220,7 @@ void update_objects()
          polygon_rebuild(bullets[i].shape);
 
          // remove bullet that reached edge of space
-         if (bullets[i].shape->x < 0 || bullets[i].shape->y < 0 || bullets[i].shape->x > SCREEN_WIDTH || bullets[i].shape->y > SCREEN_HEIGHT)
+         if (wrap_position(bullets[i].shape->x, bullets[i].shape->y, NULL, NULL))
          {
             free_polygon(bullets[i].shape);
             bullets[i].shape = NULL;
@@ -177,13 +243,74 @@ void update_objects()
          astroids[i].shape->x += astroids[i].velocity.x * game.delta_t;
          astroids[i].shape->y += astroids[i].velocity.y * game.delta_t;
 
-         // wrap ship around screen
-         if (astroids[i].shape->x < 0) astroids[i].shape->x = SCREEN_WIDTH;
-         if (astroids[i].shape->y < 0) astroids[i].shape->y = SCREEN_HEIGHT;
-         if (astroids[i].shape->x > SCREEN_WIDTH)  astroids[i].shape->x = 0;
-         if (astroids[i].shape->y > SCREEN_HEIGHT) astroids[i].shape->y = 0;
+         // wrap astroids around screen
+         wrap_position(astroids[i].shape->x, astroids[i].shape->y, &astroids[i].shape->x, &astroids[i].shape->y);
 
          polygon_rebuild(astroids[i].shape);
+      }
+   }
+
+   /*
+    * collision detection
+    */
+
+   // check player astroid collision
+   for (int i = 0; i < MAX_OBJECTS; i++)
+   {
+      if (astroids[i].shape != NULL && polygon_polygon_collision(player.ship->vertices, player.ship->nsides, astroids[i].shape->vertices, astroids[i].shape->nsides))
+      {
+         restart_game();
+      }
+   }
+
+   // check bullet astroid collision
+   for (int i = 0; i < MAX_OBJECTS; i++)
+   {
+      if (bullets[i].shape == NULL)
+         continue;
+
+      // check bullet (i) with astroid (j)
+      for (int j = 0; j < MAX_OBJECTS; j++)
+      {
+         if (astroids[j].shape == NULL)
+            continue;
+
+         if (point_polygon_collision(bullets[i].shape->x, bullets[i].shape->y, astroids[j].shape->vertices, astroids[j].shape->nsides))
+         {
+            float x = astroids[j].shape->x;
+            float y = astroids[j].shape->y;
+            float scale = (astroids[j].shape->scale.x - (astroids[j].shape->scale.x / 2.0f));
+
+            // remove bullet and astroid stuff
+            free_polygon(bullets[i].shape);
+            free_polygon(astroids[j].shape);
+            bullets[i].shape = NULL;
+            astroids[j].shape = NULL;
+
+            if (scale >= 1)
+            {
+               // create two smaller astroids
+               for (int k = 0, num = 0; k < MAX_OBJECTS; k++)
+               {
+                  if (astroids[k].shape == NULL)
+                  {
+                     astroids[k].shape = create_rand_polygon(24, x, y, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+                     astroids[k].shape->scale.x = scale;
+                     astroids[k].shape->scale.y = scale;
+                     astroids[k].velocity.x = cos(astroids[k].shape->angle) * (rand() % ASTROIDS_SPEED);
+                     astroids[k].velocity.y = sin(astroids[k].shape->angle) * (rand() % ASTROIDS_SPEED);
+                     polygon_rebuild(astroids[k].shape);
+                     num++;
+                  }
+
+                  if (num == 2)
+                     break;
+               }
+            }
+            
+            // break after collision because the bullet no longer exists
+            break;
+         }
       }
    }
 }

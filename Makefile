@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -g -Wall -Wextra -std=c99
 LIBS = -lm -lSDL2
 MAIN = astroids
-SRC = sdl2-game-window primitives
+SRC = sdl2-game-window primitives collision
 OBJ = $(MAIN:%=%.o) $(SRC:%=%.o)
 DEPS = $(SRC:%=%.h)
 
