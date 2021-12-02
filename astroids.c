@@ -13,15 +13,17 @@
 
 #define SHIP_SIZE       20
 #define SHIP_SPEED      500
-#define SHIP_TURN_SPEED 8
+#define SHIP_TURN_SPEED 5
 
 #define BULLET_SIZE     2
 #define BULLET_SPEED    600
 #define BULLET_INTERVAL 500
 
 #define ASTROIDS_SIZE   50
+#define ASTROIDS_SPEED  200
 #define ASTROIDS_SCALE  4
-#define ASTROIDS_SPEED  100
+#define ASTROIDS_MAX    5
+#define ASTROID_CHILDS  4
 
 #define PI              3.1415926535897932384626433832795
 
@@ -77,6 +79,142 @@ int wrap_position(float x, float y, float *ox, float *oy)
    return 0;
 }
 
+int add_astroid(float x, float y, float scale, int nadd)
+{
+   if (scale <= 0)
+      return -1;
+
+   if (nadd <= 0)
+      return 0;
+
+   int i, num, items;
+   for (i = 0, num = 0, items = 0; i < MAX_OBJECTS; i++)
+   {
+      if (astroids[i].shape == NULL)
+      {
+         astroids[i].shape = create_rand_polygon(24, x, y, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+         astroids[i].shape->scale.x = scale;
+         astroids[i].shape->scale.y = scale;
+         astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         polygon_rebuild(astroids[i].shape);
+         num++;
+      }
+      else
+      {
+         items++;
+      }
+
+      if (num == nadd)
+         break;
+   }
+
+   // if full
+   if (items >= MAX_OBJECTS)
+      return -1;
+
+   return 0;
+}
+
+int add_astroid_rpos(float scale, int nadd)
+{
+   if (scale <= 0)
+      return -1;
+
+   if (nadd <= 0)
+      return 0;
+
+   int i, num, items;
+   for (i = 0, num = 0, items = 0; i < MAX_OBJECTS; i++)
+   {
+      if (astroids[i].shape == NULL)
+      {
+         astroids[i].shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+         astroids[i].shape->scale.x = scale;
+         astroids[i].shape->scale.y = scale;
+         astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         polygon_rebuild(astroids[i].shape);
+         num++;
+      }
+      else
+      {
+         items++;
+      }
+
+      if (num == nadd)
+         break;
+   }
+
+   // if full
+   if (items >= MAX_OBJECTS)
+      return -1;
+
+   return 0;
+}
+
+int remove_astroid(int index)
+{
+   if (index < 0 || index > MAX_OBJECTS)
+      return -1;
+
+   if (astroids[index].shape == NULL)
+      return -1;
+
+   free_polygon(astroids[index].shape);
+   astroids[index].shape = NULL;
+
+   return 0;
+}
+
+int is_astroids_empty()
+{
+   for (int i = 0; i < MAX_OBJECTS; i++)
+      if (astroids[i].shape != NULL)
+         return 0;
+
+   return 1;
+}
+
+int add_bullet()
+{
+   int i, items;
+   for (i = 0, items = 0; i < MAX_OBJECTS; i++)
+   {
+      if (bullets[i].shape == NULL)
+      {
+         bullets[i].shape = create_reg_polygon(6, player.ship->vertices[0], player.ship->vertices[1], player.ship->angle, BULLET_SIZE);
+         bullets[i].velocity.x = cos(player.ship->angle) * (float)BULLET_SPEED;
+         bullets[i].velocity.y = sin(player.ship->angle) * (float)BULLET_SPEED;
+         break;
+      }
+      else
+      {
+         items++;
+      }
+   }
+
+   // is full
+   if (items >= MAX_OBJECTS)
+      return -1;
+
+   return 0;
+}
+
+int remove_bullet(int index)
+{
+   if (index < 0 || index > MAX_OBJECTS)
+      return -1;
+
+   if (bullets[index].shape == NULL)
+      return -1;
+
+   free_polygon(bullets[index].shape);
+   bullets[index].shape = NULL;
+
+   return 0;
+}
+
 void restart_game()
 {
    // reset player status
@@ -86,29 +224,18 @@ void restart_game()
    player.velocity.y = 0;
    polygon_rebuild(player.ship);
 
+   bullet_timer = 0;
+   current_round = 1;
+
    // free bullets and astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      if (bullets[i].shape != NULL)
-         free_polygon(bullets[i].shape);
-
-      if (astroids[i].shape != NULL)
-         free_polygon(astroids[i].shape);
-
-      bullets[i].shape = NULL;
-      astroids[i].shape = NULL;
+      remove_bullet(i);
+      remove_astroid(i);
    }
 
    // init random astroids
-   for (int i = 0; i < 2; i++)
-   {
-      astroids[i].shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
-      astroids[i].shape->scale.x = ASTROIDS_SCALE;
-      astroids[i].shape->scale.y = ASTROIDS_SCALE;
-      astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
-      astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
-      polygon_rebuild(astroids[i].shape);
-   }
+   add_astroid_rpos(ASTROIDS_SCALE, current_round);
 }
 
 void render_objects()
@@ -141,6 +268,7 @@ void update_objects()
     * player ship stuff
     */
 
+   // acceleration controls
    if (game.keypress[SDLK_w])
    {
       // acceleration
@@ -162,6 +290,7 @@ void update_objects()
       polygon_rebuild(player.thruster);
    }
 
+   // turn controls
    if (game.keypress[SDLK_a])
    {
       player.ship->angle -= (float)SHIP_TURN_SPEED * game.delta_t;
@@ -195,17 +324,8 @@ void update_objects()
       // set first avalible space in array for bullet
       if (bullet_timer <= 0)
       {
-         for (int i = 0; i < MAX_OBJECTS; i++)
-         {
-            if (bullets[i].shape == NULL)
-            {
-               bullets[i].shape = create_reg_polygon(6, player.ship->vertices[0], player.ship->vertices[1], player.ship->angle, BULLET_SIZE);
-               bullets[i].velocity.x = cos(player.ship->angle) * (float)BULLET_SPEED;
-               bullets[i].velocity.y = sin(player.ship->angle) * (float)BULLET_SPEED;
-               bullet_timer = BULLET_INTERVAL;
-               break;
-            }
-         }
+         add_bullet();
+         bullet_timer = BULLET_INTERVAL;
       }
    }
 
@@ -221,21 +341,18 @@ void update_objects()
 
          // remove bullet that reached edge of space
          if (wrap_position(bullets[i].shape->x, bullets[i].shape->y, NULL, NULL))
-         {
-            free_polygon(bullets[i].shape);
-            bullets[i].shape = NULL;
-         }
+            remove_bullet(i);
       }
    }
 
-   // reduce timer by milliseconds per frame
+   // reduce timer
    if (bullet_timer > 0) bullet_timer -= game.delta_t * 1000.0f;
 
    /*
     * astroids stuff
     */
 
-   // move all bullets
+   // move all astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
       if (astroids[i].shape != NULL)
@@ -282,36 +399,25 @@ void update_objects()
             float scale = (astroids[j].shape->scale.x - (astroids[j].shape->scale.x / 2.0f));
 
             // remove bullet and astroid stuff
-            free_polygon(bullets[i].shape);
-            free_polygon(astroids[j].shape);
-            bullets[i].shape = NULL;
-            astroids[j].shape = NULL;
+            remove_bullet(i);
+            remove_astroid(j);
 
+            // create two smaller astroids
             if (scale >= 1)
-            {
-               // create two smaller astroids
-               for (int k = 0, num = 0; k < MAX_OBJECTS; k++)
-               {
-                  if (astroids[k].shape == NULL)
-                  {
-                     astroids[k].shape = create_rand_polygon(24, x, y, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
-                     astroids[k].shape->scale.x = scale;
-                     astroids[k].shape->scale.y = scale;
-                     astroids[k].velocity.x = cos(astroids[k].shape->angle) * (rand() % ASTROIDS_SPEED);
-                     astroids[k].velocity.y = sin(astroids[k].shape->angle) * (rand() % ASTROIDS_SPEED);
-                     polygon_rebuild(astroids[k].shape);
-                     num++;
-                  }
+               add_astroid(x, y, scale, ASTROID_CHILDS);
 
-                  if (num == 2)
-                     break;
-               }
-            }
-            
             // break after collision because the bullet no longer exists
             break;
          }
       }
+   }
+
+   // add more astroids if there are no more astroids
+   if (is_astroids_empty())
+   {
+      current_round++;
+      int n = current_round > ASTROIDS_MAX ? ASTROIDS_MAX : current_round;
+      add_astroid_rpos(ASTROIDS_SCALE, n);
    }
 }
 
@@ -335,6 +441,9 @@ int on_game_creation()
    player.velocity.x = 0;
    player.velocity.y = 0;
 
+   bullet_timer = 0;
+   current_round = 1;
+
    // init bullets and astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
@@ -342,16 +451,7 @@ int on_game_creation()
       astroids[i].shape = NULL;
    }
 
-   // init random astroids
-   for (int i = 0; i < 2; i++)
-   {
-      astroids[i].shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
-      astroids[i].shape->scale.x = ASTROIDS_SCALE;
-      astroids[i].shape->scale.y = ASTROIDS_SCALE;
-      astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
-      astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % ASTROIDS_SPEED);
-      polygon_rebuild(astroids[i].shape);
-   }
+   restart_game();
 
    return 0;
 }
