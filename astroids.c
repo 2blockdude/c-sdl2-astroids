@@ -23,7 +23,7 @@
 #define ASTROIDS_SPEED  200
 #define ASTROIDS_SCALE  4
 #define ASTROIDS_MAX    5
-#define ASTROID_CHILDS  4
+#define ASTROID_CHILDS  2
 
 #define PI              3.1415926535897932384626433832795
 
@@ -130,8 +130,26 @@ int add_astroid_rpos(float scale, int nadd)
    {
       if (astroids[i] == NULL)
       {
+         int x = rand() % SCREEN_WIDTH;
+         int y = rand() % SCREEN_HEIGHT;
+
+         float angle;
+
+         // get dx, dy, and max diameter of an astroid.
+         float a = x - player.ship->x;
+         float b = y - player.ship->y;
+         float c = ASTROIDS_SIZE * ASTROIDS_SCALE * 2.0f;
+
+         // check if astroid position is too close to player.
+         if (a * a + b * b < c * c)
+         {
+            angle = 1.0f / tan(b / a);
+            x = cos(angle) * ((float)ASTROIDS_SIZE * (float)ASTROIDS_SCALE * 2.0f) + player.ship->x;
+            y = sin(angle) * ((float)ASTROIDS_SIZE * (float)ASTROIDS_SCALE * 2.0f) + player.ship->y;
+         }
+
          astroids[i] = (struct space_object *)malloc(sizeof(struct space_object));
-         astroids[i]->shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+         astroids[i]->shape = create_rand_polygon(24, x, y, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
          astroids[i]->shape->scale.x = scale;
          astroids[i]->shape->scale.y = scale;
          astroids[i]->velocity.x = cos(astroids[i]->shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
@@ -305,6 +323,9 @@ void update_objects()
    {
       player.ship->angle += (float)SHIP_TURN_SPEED * game.delta_t;
    }
+
+   if (game.keypress[SDLK_r])
+      restart_game();
 
    // give player drag to simulate speed limit
    player.velocity.x -= player.velocity.x * game.delta_t;
