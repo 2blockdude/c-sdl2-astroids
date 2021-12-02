@@ -24,6 +24,7 @@
 #define ASTROIDS_SCALE  4
 #define ASTROIDS_MAX    5
 #define ASTROID_CHILDS  2
+#define ASTROIDS_START  2
 
 #define PI              3.1415926535897932384626433832795
 
@@ -135,7 +136,7 @@ int add_astroid_rpos(float scale, int nadd)
 
          float angle;
 
-         // get dx, dy, and max diameter of an astroid.
+         // get x distance from player, y distance from player, and max diameter of an astroid.
          float a = x - player.ship->x;
          float b = y - player.ship->y;
          float c = ASTROIDS_SIZE * ASTROIDS_SCALE * 2.0f;
@@ -258,7 +259,8 @@ void restart_game()
    }
 
    // init random astroids
-   add_astroid_rpos(ASTROIDS_SCALE, current_round);
+   int n = ASTROIDS_START > ASTROIDS_MAX ? ASTROIDS_MAX : ASTROIDS_START;
+   add_astroid_rpos(ASTROIDS_SCALE, n);
 }
 
 void render_objects()
@@ -323,9 +325,6 @@ void update_objects()
    {
       player.ship->angle += (float)SHIP_TURN_SPEED * game.delta_t;
    }
-
-   if (game.keypress[SDLK_r])
-      restart_game();
 
    // give player drag to simulate speed limit
    player.velocity.x -= player.velocity.x * game.delta_t;
@@ -429,7 +428,7 @@ void update_objects()
             remove_astroid(j);
 
             // create two smaller astroids
-            if (scale >= 1)
+            if (scale >= ASTROIDS_SCALE / 4.0f)
                add_astroid(x, y, scale, ASTROID_CHILDS);
 
             // break after collision because the bullet no longer exists
@@ -442,7 +441,7 @@ void update_objects()
    if (is_astroids_empty())
    {
       current_round++;
-      int n = current_round > ASTROIDS_MAX ? ASTROIDS_MAX : current_round;
+      int n = current_round + ASTROIDS_START > ASTROIDS_MAX ? ASTROIDS_MAX : current_round + ASTROIDS_START;
       add_astroid_rpos(ASTROIDS_SCALE, n);
    }
 }
