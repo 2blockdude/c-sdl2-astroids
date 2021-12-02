@@ -131,8 +131,8 @@ int add_astroid_rpos(float scale, int nadd)
    {
       if (astroids[i] == NULL)
       {
-         int x = rand() % SCREEN_WIDTH;
-         int y = rand() % SCREEN_HEIGHT;
+         float x = rand() % SCREEN_WIDTH;
+         float y = rand() % SCREEN_HEIGHT;
 
          float angle;
 
@@ -147,6 +147,7 @@ int add_astroid_rpos(float scale, int nadd)
             angle = 1.0f / tan(b / a);
             x = cos(angle) * ((float)ASTROIDS_SIZE * (float)ASTROIDS_SCALE * 2.0f) + player.ship->x;
             y = sin(angle) * ((float)ASTROIDS_SIZE * (float)ASTROIDS_SCALE * 2.0f) + player.ship->y;
+            wrap_position(x, y, &x, &y);
          }
 
          astroids[i] = (struct space_object *)malloc(sizeof(struct space_object));
@@ -441,7 +442,7 @@ void update_objects()
    if (is_astroids_empty())
    {
       current_round++;
-      int n = current_round + ASTROIDS_START > ASTROIDS_MAX ? ASTROIDS_MAX : current_round + ASTROIDS_START;
+      int n = current_round + ASTROIDS_START - 1 > ASTROIDS_MAX ? ASTROIDS_MAX : current_round + ASTROIDS_START - 1;
       add_astroid_rpos(ASTROIDS_SCALE, n);
    }
 }
