@@ -43,8 +43,8 @@ struct space_object
 int bullet_timer;
 int current_round;
 struct ship player;
-struct space_object astroids[MAX_OBJECTS];
-struct space_object bullets[MAX_OBJECTS];
+struct space_object *astroids[MAX_OBJECTS];
+struct space_object *bullets[MAX_OBJECTS];
 
 int wrap_position(float x, float y, float *ox, float *oy)
 {
@@ -90,14 +90,15 @@ int add_astroid(float x, float y, float scale, int nadd)
    int i, num, items;
    for (i = 0, num = 0, items = 0; i < MAX_OBJECTS; i++)
    {
-      if (astroids[i].shape == NULL)
+      if (astroids[i] == NULL)
       {
-         astroids[i].shape = create_rand_polygon(24, x, y, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
-         astroids[i].shape->scale.x = scale;
-         astroids[i].shape->scale.y = scale;
-         astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
-         astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
-         polygon_rebuild(astroids[i].shape);
+         astroids[i] = (struct space_object *)malloc(sizeof(struct space_object));
+         astroids[i]->shape = create_rand_polygon(24, x, y, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+         astroids[i]->shape->scale.x = scale;
+         astroids[i]->shape->scale.y = scale;
+         astroids[i]->velocity.x = cos(astroids[i]->shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         astroids[i]->velocity.y = sin(astroids[i]->shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         polygon_rebuild(astroids[i]->shape);
          num++;
       }
       else
@@ -127,14 +128,15 @@ int add_astroid_rpos(float scale, int nadd)
    int i, num, items;
    for (i = 0, num = 0, items = 0; i < MAX_OBJECTS; i++)
    {
-      if (astroids[i].shape == NULL)
+      if (astroids[i] == NULL)
       {
-         astroids[i].shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
-         astroids[i].shape->scale.x = scale;
-         astroids[i].shape->scale.y = scale;
-         astroids[i].velocity.x = cos(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
-         astroids[i].velocity.y = sin(astroids[i].shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
-         polygon_rebuild(astroids[i].shape);
+         astroids[i] = (struct space_object *)malloc(sizeof(struct space_object));
+         astroids[i]->shape = create_rand_polygon(24, rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, (float)((double)rand() * (double)((2 * PI) / RAND_MAX)), ASTROIDS_SIZE, ASTROIDS_SIZE * 0.7f, 1);
+         astroids[i]->shape->scale.x = scale;
+         astroids[i]->shape->scale.y = scale;
+         astroids[i]->velocity.x = cos(astroids[i]->shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         astroids[i]->velocity.y = sin(astroids[i]->shape->angle) * (rand() % (int)(ASTROIDS_SPEED / scale));
+         polygon_rebuild(astroids[i]->shape);
          num++;
       }
       else
@@ -158,11 +160,12 @@ int remove_astroid(int index)
    if (index < 0 || index > MAX_OBJECTS)
       return -1;
 
-   if (astroids[index].shape == NULL)
+   if (astroids[index] == NULL)
       return -1;
 
-   free_polygon(astroids[index].shape);
-   astroids[index].shape = NULL;
+   free_polygon(astroids[index]->shape);
+   free(astroids[index]);
+   astroids[index] = NULL;
 
    return 0;
 }
@@ -170,7 +173,7 @@ int remove_astroid(int index)
 int is_astroids_empty()
 {
    for (int i = 0; i < MAX_OBJECTS; i++)
-      if (astroids[i].shape != NULL)
+      if (astroids[i] != NULL)
          return 0;
 
    return 1;
@@ -181,11 +184,12 @@ int add_bullet()
    int i, items;
    for (i = 0, items = 0; i < MAX_OBJECTS; i++)
    {
-      if (bullets[i].shape == NULL)
+      if (bullets[i] == NULL)
       {
-         bullets[i].shape = create_reg_polygon(6, player.ship->vertices[0], player.ship->vertices[1], player.ship->angle, BULLET_SIZE);
-         bullets[i].velocity.x = cos(player.ship->angle) * (float)BULLET_SPEED;
-         bullets[i].velocity.y = sin(player.ship->angle) * (float)BULLET_SPEED;
+         bullets[i] = (struct space_object *)malloc(sizeof(struct space_object));
+         bullets[i]->shape = create_reg_polygon(6, player.ship->vertices[0], player.ship->vertices[1], player.ship->angle, BULLET_SIZE);
+         bullets[i]->velocity.x = cos(player.ship->angle) * (float)BULLET_SPEED;
+         bullets[i]->velocity.y = sin(player.ship->angle) * (float)BULLET_SPEED;
          break;
       }
       else
@@ -206,11 +210,12 @@ int remove_bullet(int index)
    if (index < 0 || index > MAX_OBJECTS)
       return -1;
 
-   if (bullets[index].shape == NULL)
+   if (bullets[index] == NULL)
       return -1;
 
-   free_polygon(bullets[index].shape);
-   bullets[index].shape = NULL;
+   free_polygon(bullets[index]->shape);
+   free(bullets[index]);
+   bullets[index] = NULL;
 
    return 0;
 }
@@ -254,8 +259,8 @@ void render_objects()
    // draw bullets and astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      draw_polygon(game.renderer, astroids[i].shape);
-      draw_polygon(game.renderer, bullets[i].shape);
+      if(astroids[i] != NULL) draw_polygon(game.renderer, astroids[i]->shape);
+      if(bullets[i] != NULL) draw_polygon(game.renderer, bullets[i]->shape);
    }
 
    SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
@@ -332,15 +337,15 @@ void update_objects()
    // move all bullets
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      if (bullets[i].shape != NULL)
+      if (bullets[i] != NULL)
       {
-         bullets[i].shape->x += bullets[i].velocity.x * game.delta_t;
-         bullets[i].shape->y += bullets[i].velocity.y * game.delta_t;
+         bullets[i]->shape->x += bullets[i]->velocity.x * game.delta_t;
+         bullets[i]->shape->y += bullets[i]->velocity.y * game.delta_t;
 
-         polygon_rebuild(bullets[i].shape);
+         polygon_rebuild(bullets[i]->shape);
 
          // remove bullet that reached edge of space
-         if (wrap_position(bullets[i].shape->x, bullets[i].shape->y, NULL, NULL))
+         if (wrap_position(bullets[i]->shape->x, bullets[i]->shape->y, NULL, NULL))
             remove_bullet(i);
       }
    }
@@ -355,15 +360,15 @@ void update_objects()
    // move all astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      if (astroids[i].shape != NULL)
+      if (astroids[i] != NULL)
       {
-         astroids[i].shape->x += astroids[i].velocity.x * game.delta_t;
-         astroids[i].shape->y += astroids[i].velocity.y * game.delta_t;
+         astroids[i]->shape->x += astroids[i]->velocity.x * game.delta_t;
+         astroids[i]->shape->y += astroids[i]->velocity.y * game.delta_t;
 
          // wrap astroids around screen
-         wrap_position(astroids[i].shape->x, astroids[i].shape->y, &astroids[i].shape->x, &astroids[i].shape->y);
+         wrap_position(astroids[i]->shape->x, astroids[i]->shape->y, &astroids[i]->shape->x, &astroids[i]->shape->y);
 
-         polygon_rebuild(astroids[i].shape);
+         polygon_rebuild(astroids[i]->shape);
       }
    }
 
@@ -374,7 +379,7 @@ void update_objects()
    // check player astroid collision
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      if (astroids[i].shape != NULL && polygon_polygon_collision(player.ship->vertices, player.ship->nsides, astroids[i].shape->vertices, astroids[i].shape->nsides))
+      if (astroids[i] != NULL && polygon_polygon_collision(player.ship->vertices, player.ship->nsides, astroids[i]->shape->vertices, astroids[i]->shape->nsides))
       {
          restart_game();
       }
@@ -383,20 +388,20 @@ void update_objects()
    // check bullet astroid collision
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      if (bullets[i].shape == NULL)
+      if (bullets[i] == NULL)
          continue;
 
       // check bullet (i) with astroid (j)
       for (int j = 0; j < MAX_OBJECTS; j++)
       {
-         if (astroids[j].shape == NULL)
+         if (astroids[j] == NULL)
             continue;
 
-         if (point_polygon_collision(bullets[i].shape->x, bullets[i].shape->y, astroids[j].shape->vertices, astroids[j].shape->nsides))
+         if (point_polygon_collision(bullets[i]->shape->x, bullets[i]->shape->y, astroids[j]->shape->vertices, astroids[j]->shape->nsides))
          {
-            float x = astroids[j].shape->x;
-            float y = astroids[j].shape->y;
-            float scale = (astroids[j].shape->scale.x - (astroids[j].shape->scale.x / 2.0f));
+            float x = astroids[j]->shape->x;
+            float y = astroids[j]->shape->y;
+            float scale = (astroids[j]->shape->scale.x - (astroids[j]->shape->scale.x / 2.0f));
 
             // remove bullet and astroid stuff
             remove_bullet(i);
@@ -447,8 +452,8 @@ int on_game_creation()
    // init bullets and astroids
    for (int i = 0; i < MAX_OBJECTS; i++)
    {
-      bullets[i].shape = NULL;
-      astroids[i].shape = NULL;
+      bullets[i] = NULL;
+      astroids[i] = NULL;
    }
 
    restart_game();
